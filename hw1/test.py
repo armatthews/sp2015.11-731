@@ -1,4 +1,5 @@
 import sys
+import math
 import numpy
 
 def normalize(v):
@@ -28,7 +29,7 @@ class HmmStatistics:
 
 	def compute_transition_probs(self):
 		transition_probs = self.transition_counts / self.state_counts[:, numpy.newaxis]
-		transition_probs = transition_probs / numpy.sum(transition_probs, axis=1)
+		transition_probs = transition_probs / transition_probs.sum(axis=1)[:, numpy.newaxis]
 		return transition_probs
 
 	def compute_emission_probs(self):
@@ -108,7 +109,7 @@ class HiddenMarkovModel:
 		X = X[::-1]
 		return X
 
-	def update_parameters(self, observations):
+	def expectation_step(self, observations):
 		obs_matrix = numpy.zeros((len(observations), self.K))
 		for t in range(len(observations)):
 			obs_matrix[t][observations[t]] = 1.0
@@ -125,27 +126,15 @@ class HiddenMarkovModel:
 
 		self.stats.add(expected_start_counts, expected_state_counts, expected_transition_counts, expected_emission_counts)
 
+		obs_prob = sum(forward_probs[-1])
+		return obs_prob
+
+	def maximization_step(self):
 		self.start_probs = self.stats.compute_start_probs()
 		self.transition_probs = self.stats.compute_transition_probs()
 		self.emission_probs = self.stats.compute_emission_probs()
 
 		self.stats.reset()
-
-		# Compute new transition probs
-		quot = expected_transition_counts / expected_state_counts[:,numpy.newaxis]
-		norm = quot / quot.sum(axis=1)[:, numpy.newaxis]
-		#self.transition_probs = norm
-
-		# Compute new emission probs	
-                emission_probs = expected_emission_counts / expected_state_counts[:,numpy.newaxis]
-		emission_probs = emission_probs / numpy.sum(emission_probs, axis=1)
-		#self.emission_probs = emission_probs
-
-		# Compute new start probs
-		#self.start_probs = expected_start_counts
-
-		obs_prob = sum(forward_probs[-1])
-		return obs_prob
 
 if False:
 	states = ('Rainy', 'Sunny')
@@ -191,15 +180,18 @@ else:
 	emission_probs = numpy.array([[0.4, 0.6], [0.5, 0.5]])
 
 hmm = HiddenMarkovModel(states, observations, start_probs, transition_probs, emission_probs)
-observations = [0, 1, 1, 0]
-#print hmm.viterbi(observations)
+data = [[0, 1, 1, 0] for i in range(10)] + [[1, 0, 1] for i in range(20)]
 
 for iteration in range(1000):
-	obs_prob = hmm.update_parameters(observations)
-	print obs_prob 
+	total_log_prob = 0.0
+	for observations in data:
+		obs_prob = hmm.expectation_step(observations)
+		total_log_prob += math.log(obs_prob)
+	hmm.maximization_step()
+	print total_log_prob
 
 print hmm.start_probs
 print hmm.transition_probs
 print hmm.emission_probs
-print hmm.viterbi(observations)
-
+for observations in data:
+	print hmm.viterbi(observations)
