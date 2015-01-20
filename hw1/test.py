@@ -5,13 +5,36 @@ def normalize(v):
 	assert abs(sum(v)) > 1.0e-100
 	return v / sum(v)
 
-class HmmExpectations:
+class HmmStatistics:
 	def __init__(self, N, K):
 		self.N = N
 		self.K = K
-		self.transitions = numpy.zeros((N, N))
-		self.emissions = numpy.zeros((N, K))
-		self.starts = numpy.zeros(N)
+		self.reset()
+
+	def reset(self):
+		self.start_counts = numpy.zeros(self.N)
+		self.state_counts = numpy.zeros(self.N)
+		self.transition_counts = numpy.zeros((self.N, self.N))
+		self.emission_counts = numpy.zeros((self.N, self.K))
+
+	def add(self, start_counts, state_counts, transition_counts, emission_counts):
+		self.start_counts += start_counts
+		self.state_counts += state_counts
+		self.transition_counts += transition_counts
+		self.emission_counts += emission_counts
+
+	def compute_start_probs(self):
+		return self.start_counts / numpy.sum(self.start_counts)
+
+	def compute_transition_probs(self):
+		transition_probs = self.transition_counts / self.state_counts[:, numpy.newaxis]
+		transition_probs = transition_probs / numpy.sum(transition_probs, axis=1)
+		return transition_probs
+
+	def compute_emission_probs(self):
+		emission_probs = self.emission_counts / self.state_counts[:, numpy.newaxis]
+		emission_probs = emission_probs / numpy.sum(emission_probs, axis=1)
+		return emission_probs	
 
 class HiddenMarkovModel:
 	def __init__(self, state_names, observation_names, start_probs, transition_probs, emission_probs):
@@ -22,6 +45,7 @@ class HiddenMarkovModel:
 		self.emission_probs = emission_probs
 		self.N = len(states)
 		self.K = len(observations)
+		self.stats = HmmStatistics(self.N, self.K)
 
 	# forward[t][i] = p(X_i, y_1:i | theta) 
 	def forward(self, observations):
@@ -85,29 +109,40 @@ class HiddenMarkovModel:
 		return X
 
 	def update_parameters(self, observations):
+		obs_matrix = numpy.zeros((len(observations), self.K))
+		for t in range(len(observations)):
+			obs_matrix[t][observations[t]] = 1.0
+
 		forward_probs = self.forward(observations)
 		backward_probs = self.backward(observations)
 		g = self.gamma(forward_probs, backward_probs)
 		x = self.xi(forward_probs, backward_probs, observations)
 
-		# Compute new transition probs
+		expected_start_counts = g[0]
 		expected_state_counts = numpy.sum(g, axis=0)
 		expected_transition_counts = numpy.sum(x, axis=0)
+		expected_emission_counts = (g.transpose().dot(obs_matrix))
+
+		self.stats.add(expected_start_counts, expected_state_counts, expected_transition_counts, expected_emission_counts)
+
+		self.start_probs = self.stats.compute_start_probs()
+		self.transition_probs = self.stats.compute_transition_probs()
+		self.emission_probs = self.stats.compute_emission_probs()
+
+		self.stats.reset()
+
+		# Compute new transition probs
 		quot = expected_transition_counts / expected_state_counts[:,numpy.newaxis]
 		norm = quot / quot.sum(axis=1)[:, numpy.newaxis]
-		self.transition_probs = norm
+		#self.transition_probs = norm
 
-		# Compute new emission probs
-		obs_matrix = numpy.zeros((len(observations), self.K))
-		for t in range(len(observations)):
-			obs_matrix[t][observations[t]] = 1.0
-		expected_emission_counts = (g.transpose().dot(obs_matrix))
+		# Compute new emission probs	
                 emission_probs = expected_emission_counts / expected_state_counts[:,numpy.newaxis]
 		emission_probs = emission_probs / numpy.sum(emission_probs, axis=1)
-		self.emission_probs = emission_probs
+		#self.emission_probs = emission_probs
 
 		# Compute new start probs
-		self.start_probs = g[0]
+		#self.start_probs = expected_start_counts
 
 		obs_prob = sum(forward_probs[-1])
 		return obs_prob
