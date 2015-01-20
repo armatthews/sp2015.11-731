@@ -46,11 +46,9 @@ class HiddenMarkovModel:
 	# gamma[t][i] = p(X_t = i | Y, theta)
 	def gamma(self, forward_probs, backward_probs):
 		assert forward_probs.shape == backward_probs.shape
-		g = []
-		for f, b in zip(forward_probs, backward_probs):
-			p = normalize(f * b)
-			g.append(p)
-		return numpy.array(g)
+		g = forward_probs * backward_probs
+		z = numpy.sum(g, axis=1)[:,numpy.newaxis]
+		return g/z 
 
 	# xi[t][i][j] = p(X_t = i, X_t+1 = j | Y, theta)
 	def xi(self, forward_probs, backward_probs, observations):
@@ -59,11 +57,6 @@ class HiddenMarkovModel:
 		bp = backward_probs[1:,numpy.newaxis,:]
 		ep = numpy.array([self.emission_probs.transpose()[observations[t]] for t in range(0, len(observations))])[1:,numpy.newaxis,:]
 		z = numpy.array([1.0/(forward_probs[t].dot(backward_probs[t])) for t in range(0, len(observations))])[:-1,numpy.newaxis,numpy.newaxis]
-		"""print forward_probs[0][1]
-		print transition_probs[1][0]
-		print emission_probs[0][1]
-		print backward_probs[1][0]
-		print"""
 
 		x = fp * tp * bp * ep * z
 		return x
@@ -106,15 +99,6 @@ class HiddenMarkovModel:
 		backward_probs = self.backward(observations)
 		g = self.gamma(forward_probs, backward_probs)
 		x = self.xi(forward_probs, backward_probs, observations)
-		"""print 'forward:'
-		print forward_probs
-		print 'backward:'
-		print backward_probs
-		print 'gamma:'
-		print g
-		print 'xi:'
-		print x"""
-		#sys.exit()
 
 		# Compute new transition probs
 		expected_state_counts = numpy.sum(g, axis=0)
