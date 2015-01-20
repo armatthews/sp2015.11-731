@@ -5,6 +5,14 @@ def normalize(v):
 	assert abs(sum(v)) > 1.0e-100
 	return v / sum(v)
 
+class HmmExpectations:
+	def __init__(self, N, K):
+		self.N = N
+		self.K = K
+		self.transitions = numpy.zeros((N, N))
+		self.emissions = numpy.zeros((N, K))
+		self.starts = numpy.zeros(N)
+
 class HiddenMarkovModel:
 	def __init__(self, state_names, observation_names, start_probs, transition_probs, emission_probs):
 		self.state_names = state_names
@@ -109,36 +117,20 @@ class HiddenMarkovModel:
 		#sys.exit()
 
 		# Compute new transition probs
-		for i in range(self.N):
-			# s is the expected number of times we pass through state i 
-			s = sum(g[t][i] for t in range(0, len(observations)))
-			assert s >= 0.0
-			if s > 1.0e-100 and len(observations) > 1:
-				T = numpy.zeros(self.N)
-				for j in range(self.N):
-					# t is the expected number of times we transition from state i to state j
-					t = sum(x[t][i][j] for t in range(0, len(observations) - 1))
-					T[j] = t / s
-				T = normalize(T)
-				self.transition_probs[i] = T
-			else:
-				# if s is 0, we never pass through this state.
-				# in this case, the values of the parameters don't matter,
-				# so we just leave them at what they were
-				pass
+		expected_state_counts = numpy.sum(g, axis=0)
+		expected_transition_counts = numpy.sum(x, axis=0)
+		quot = expected_transition_counts / expected_state_counts[:,numpy.newaxis]
+		norm = quot / quot.sum(axis=1)[:, numpy.newaxis]
+		self.transition_probs = norm
 
 		# Compute new emission probs
-		for i in range(self.N):
-			# s is the expected number of times we pass through state i
-			s = sum(g[t][i] for t in range(0, len(observations)))
-			assert s >= 0.0
-			if s > 0:
-				T = numpy.zeros(self.K)
-				for k in range(self.K):
-					t = sum(g[t][i] for t in range(len(observations)) if observations[t] == k)
-					T[k] = t / s
-				T = normalize(T)
-				self.emission_probs[i] = T
+		obs_matrix = numpy.zeros((len(observations), self.K))
+		for t in range(len(observations)):
+			obs_matrix[t][observations[t]] = 1.0
+		expected_emission_counts = (g.transpose().dot(obs_matrix))
+                emission_probs = expected_emission_counts / expected_state_counts[:,numpy.newaxis]
+		emission_probs = emission_probs / numpy.sum(emission_probs, axis=1)
+		self.emission_probs = emission_probs
 
 		# Compute new start probs
 		self.start_probs = g[0]
@@ -146,7 +138,7 @@ class HiddenMarkovModel:
 		obs_prob = sum(forward_probs[-1])
 		return obs_prob
 
-if True:
+if False:
 	states = ('Rainy', 'Sunny')
 	observations = ('walk', 'shop', 'clean')
 	start_probs = numpy.array([0.6, 0.4])
@@ -190,8 +182,8 @@ else:
 	emission_probs = numpy.array([[0.4, 0.6], [0.5, 0.5]])
 
 hmm = HiddenMarkovModel(states, observations, start_probs, transition_probs, emission_probs)
-observations = [0, 1, 2]
-print hmm.viterbi(observations)
+observations = [0, 1, 1, 0]
+#print hmm.viterbi(observations)
 
 a = hmm.forward(observations)
 b = hmm.backward(observations)
