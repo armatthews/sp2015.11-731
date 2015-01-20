@@ -25,23 +25,27 @@ class HiddenMarkovModel:
 
 	# forward[t][i] = p(X_i, y_1:i | theta) 
 	def forward(self, observations):
-		forward_probs = []
+		forward_probs = numpy.zeros((len(observations), self.N))
 		for i in range(len(observations)):
 			state_probs = state_probs.dot(self.transition_probs) if i > 0 else self.start_probs
 			obs_matrix = numpy.diag(self.emission_probs.transpose()[observations[i]])
 			state_probs = state_probs.dot(obs_matrix)
-			forward_probs.append(state_probs)
-		return numpy.array(forward_probs)
+			forward_probs[i] = state_probs
+
+		return forward_probs
 
 	# backward[t][i] = p(y_t+1:T | X_t = i, theta) 
 	def backward(self, observations):
-		state_probs = numpy.array([1.0 for state in states])
-		backward_probs = [state_probs]
-		for i in range(1,len(observations))[::-1]:
+		state_probs = numpy.zeros(self.N)
+		state_probs.fill(1.0)
+		backward_probs = numpy.zeros((len(observations), self.N))
+		backward_probs[len(observations) - 1] = state_probs
+		for i in range(len(observations) - 1, 0, -1):
 			obs_matrix = numpy.diag(self.emission_probs.transpose()[observations[i]])
 			state_probs = self.transition_probs.dot(obs_matrix).dot(state_probs)
-			backward_probs.append(state_probs)
-		return numpy.array(backward_probs[::-1])
+			backward_probs[i - 1] = state_probs
+
+		return backward_probs
 
 	# gamma[t][i] = p(X_t = i | Y, theta)
 	def gamma(self, forward_probs, backward_probs):
@@ -60,20 +64,6 @@ class HiddenMarkovModel:
 
 		x = fp * tp * bp * ep * z
 		return x
-
-	def old_xi(self, forward_probs, backward_probs, observations):
-		#xi[0,1,0] should be 0.02102447163 = 0.075 * 0.1 * 0.6 * 0.2561 / 0.05544
-		x = numpy.zeros((len(observations) - 1, self.N, self.N))
-		y = forward_probs.dot(self.transition_probs[:,:])
-		z = 0.0
-		for t in range(len(observations)-1):
-			z = forward_probs[t][:].dot(backward_probs[t][:])
-			assert abs(z) > 1.0e-100
-			for i in range(self.N):
-				for j in range(self.N):
-					x[t][i][j] = forward_probs[t][i] * self.transition_probs[i][j] * backward_probs[t + 1][j] * self.emission_probs[j][observations[t + 1]] / z
-		return x
-
 
 	# Finds argmax_X of p(X | Y, theta)
 	def viterbi(self, observations):
@@ -168,11 +158,6 @@ else:
 hmm = HiddenMarkovModel(states, observations, start_probs, transition_probs, emission_probs)
 observations = [0, 1, 1, 0]
 #print hmm.viterbi(observations)
-
-a = hmm.forward(observations)
-b = hmm.backward(observations)
-x = hmm.xi(a, b, observations)
-old_x = hmm.old_xi(a, b, observations)
 
 for iteration in range(1000):
 	obs_prob = hmm.update_parameters(observations)
