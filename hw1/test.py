@@ -119,7 +119,7 @@ class HiddenMarkovModel:
 					# t is the expected number of times we transition from state i to state j
 					t = sum(x[t][i][j] for t in range(0, len(observations) - 1))
 					T[j] = t / s
-					T = normalize(T)
+				T = normalize(T)
 				self.transition_probs[i] = T
 			else:
 				# if s is 0, we never pass through this state.
