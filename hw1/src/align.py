@@ -63,28 +63,27 @@ for line in sys.stdin:
 
 L = max([len(t) for (s, t) in bitext]) # max target sentence length
 translation_table = generate_initial_translation_table(bitext, len(source_vocabulary), len(target_vocabulary))
-print 'translation_table:'
-print_ttable()
+#print 'translation_table:'
+#print_ttable()
 tension = 1.1
 N = L
 K = len(target_vocabulary)
 
 start_probs = numpy.array([(1.0/tension) ** i for i in range(N)])
 start_probs = normalize(start_probs)
-print 'start_probs:'
-print start_probs
+#print 'start_probs:'
+#print start_probs
 
 transition_probs = numpy.zeros((N, N))
 for i in range(N):
 	for j in range(N):
 		transition_probs[i][j] = (1.0 / tension) ** abs(i - j)
 transition_probs = row_normalize(transition_probs)
-print 'transition_probs:'
-print transition_probs
+#print 'transition_probs:'
+#print transition_probs
 
 epsilon_row = numpy.zeros(K)
 epsilon_row[0] = 1.0
-
 
 ttable_expectations = numpy.zeros(translation_table.shape)
 hmm = HiddenMarkovModel(N, K, start_probs, transition_probs, None)
@@ -99,14 +98,13 @@ for iteration in range(8):
 				emission_probs[i] = translation_table[source[i]]
 			else:
 				emission_probs[i] = epsilon_row
-
 		hmm.emission_probs = emission_probs
 	
 		obs_prob = hmm.expectation_step(target)
-		print ' '.join([source_vocabulary.get_word(s) for s in source]),
-		print '|||',
-		print ' '.join([target_vocabulary.get_word(t) for t in target]),
-		print hmm.viterbi(target)
+		#print ' '.join([source_vocabulary.get_word(s) for s in source]),
+		#print '|||',
+		#print ' '.join([target_vocabulary.get_word(t) for t in target]),
+		#print hmm.viterbi(target)
 
 		total_log_prob += math.log(obs_prob)
 		for i in range(len(source)):
@@ -117,10 +115,21 @@ for iteration in range(8):
 	ttable_expectations[0][0] = 1.0
 	translation_table = row_normalize(ttable_expectations)
 	ttable_expectations = numpy.zeros(translation_table.shape)
-	print 'iteration %d log_prob: %f' % (iteration, total_log_prob)
+	print >>sys.stderr, 'iteration %d log_prob: %f' % (iteration, total_log_prob)
 
-print 'start_probs:'
-print hmm.start_probs
-print 'transition_probs:'
-print hmm.transition_probs
-print_ttable()
+for source, target in bitext:
+	emission_probs = numpy.zeros((N, K))
+	for i in range(N):
+		if i < len(source):
+			emission_probs[i] = translation_table[source[i]]
+		else:
+			emission_probs[i] = epsilon_row
+	hmm.emission_probs = emission_probs
+	a = hmm.viterbi(target)
+	print ' '.join('%d-%d' % (i, j) for (i, j) in enumerate(a))
+
+#print 'start_probs:'
+#print hmm.start_probs
+#print 'transition_probs:'
+#print hmm.transition_probs
+#print_ttable()
