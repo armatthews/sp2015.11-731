@@ -126,7 +126,7 @@ for source, target in bitext:
 			emission_probs[i] = epsilon_row
 	hmm.emission_probs = emission_probs
 	a = hmm.viterbi(target)
-	print ' '.join('%d-%d' % (i, j) for (i, j) in enumerate(a))
+	print ' '.join('%d-%d' % (j, i) for (i, j) in enumerate(a))
 
 #print 'start_probs:'
 #print hmm.start_probs
