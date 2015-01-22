@@ -1,3 +1,4 @@
+import sys
 import numpy
 
 class HmmStatistics:
@@ -23,11 +24,15 @@ class HmmStatistics:
 
 	def compute_transition_probs(self):
 		transition_probs = self.transition_counts / self.state_counts[:, numpy.newaxis]
-		#transition_probs = transition_probs / transition_probs.sum(axis=1)[:, numpy.newaxis]
-		return transition_probs
+		sums = transition_probs.sum(axis=1)[:, numpy.newaxis]
+		#a = transition_probs / sums
+		b = numpy.where(sums > 0, transition_probs / sums, 0.0)
+		return b
 
 	def compute_emission_probs(self):
 		emission_probs = self.emission_counts / self.state_counts[:, numpy.newaxis]
-		emission_probs = emission_probs / numpy.sum(emission_probs, axis=1)[:, numpy.newaxis]
-		return emission_probs	
+		sums = emission_probs.sum(axis=1)[:, numpy.newaxis]
+		#a = emission_probs / sums
+		b = numpy.where(sums > 0, emission_probs / sums, 0.0)
+		return b
 

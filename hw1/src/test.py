@@ -41,7 +41,7 @@ elif False:
 	emission_probs = numpy.array([[1.0], [1.0]])
 else:
 	states = ('s', 't')
-	observations = list(range(100000)) #('A', 'B')
+	observations = ('A', 'B')
 	start_probs = numpy.array([0.85, 0.15])
 	transition_probs = numpy.array([[0.3, 0.7], [0.1, 0.9]])
 	emission_probs = numpy.array([[0.4, 0.6], [0.5, 0.5]])
