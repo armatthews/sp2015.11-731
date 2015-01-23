@@ -86,6 +86,7 @@ epsilon_row = numpy.zeros(K)
 epsilon_row[0] = 1.0
 
 ttable_expectations = numpy.zeros(translation_table.shape)
+
 hmm = HiddenMarkovModel(N, K, start_probs, transition_probs, None)
 for iteration in range(8):
 	total_log_prob = 0.0
@@ -99,6 +100,8 @@ for iteration in range(8):
 			else:
 				emission_probs[i] = epsilon_row
 		hmm.emission_probs = emission_probs
+
+		hmm.N = len(source)
 	
 		obs_prob = hmm.expectation_step(target)
 		#print ' '.join([source_vocabulary.get_word(s) for s in source]),
@@ -108,7 +111,7 @@ for iteration in range(8):
 
 		total_log_prob += math.log(obs_prob)
 		for i in range(len(source)):
-			ttable_expectations[source[i]] += hmm.stats.emission_counts[i]
+			ttable_expectations[source[i]] += hmm.stats.emission_counts[i]	
 		hmm.stats.emission_counts = numpy.zeros(hmm.stats.emission_counts.shape)
 
 	hmm.maximization_step()
@@ -124,6 +127,7 @@ for source, target in bitext:
 			emission_probs[i] = translation_table[source[i]]
 		else:
 			emission_probs[i] = epsilon_row
+	#hmm.N = len(source)
 	hmm.emission_probs = emission_probs
 	a = hmm.viterbi(target)
 	print ' '.join('%d-%d' % (j, i) for (i, j) in enumerate(a))

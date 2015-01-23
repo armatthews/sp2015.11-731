@@ -14,10 +14,10 @@ class HmmStatistics:
 		self.emission_counts = numpy.zeros((self.N, self.K))
 
 	def add(self, start_counts, state_counts, transition_counts, emission_counts):
-		self.start_counts += start_counts
-		self.state_counts += state_counts
-		self.transition_counts += transition_counts
-		self.emission_counts += emission_counts
+		self.start_counts[:start_counts.shape[0]] += start_counts
+		self.state_counts[:state_counts.shape[0]] += state_counts
+		self.transition_counts[:transition_counts.shape[0], :transition_counts.shape[1]] += transition_counts
+		self.emission_counts[:emission_counts.shape[0], :emission_counts.shape[1]] += emission_counts
 
 	def compute_start_probs(self):
 		return self.start_counts / numpy.sum(self.start_counts)
