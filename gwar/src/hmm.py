@@ -1,6 +1,7 @@
 import sys
 import numpy
 from hmmstats import HmmStatistics
+from scipy.sparse import coo_matrix
 
 class HiddenMarkovModel:
 	def __init__(self, num_states, num_obs_types, start_probs, transition_probs, emission_probs):
@@ -39,17 +40,27 @@ class HiddenMarkovModel:
 	def gamma(self, forward_probs, backward_probs):
 		assert forward_probs.shape == backward_probs.shape
 		g = forward_probs * backward_probs
-		z = numpy.sum(g, axis=1)[:,numpy.newaxis]
-		return g/z 
+		z = 1.0 / numpy.sum(g, axis=1)[:,numpy.newaxis]
+		return g * z, z
 
 	# xi[t][i][j] = p(X_t = i, X_t+1 = j | Y, theta)
-	def xi(self, forward_probs, backward_probs, observations):
+	def xi(self, forward_probs, backward_probs, z, observations):
 		fp = forward_probs[:-1, :, numpy.newaxis]
 		tp = self.transition_probs[numpy.newaxis,:,:]
 		bp = backward_probs[1:,numpy.newaxis,:]
-		ep = numpy.array([self.emission_probs.transpose()[observations[t]] for t in range(0, len(observations))])[1:,numpy.newaxis,:]
-		z = numpy.array([1.0/(forward_probs[t].dot(backward_probs[t])) for t in range(0, len(observations))])[:-1,numpy.newaxis,numpy.newaxis]
+		if False:
+			data = numpy.ones(len(observations))
+			rows = numpy.array(range(len(observations)))
+			cols = numpy.array(observations)
+			obs_matrix = coo_matrix((data, (rows, cols)), shape=(len(observations), self.K))
+		else:
+			obs_matrix = numpy.zeros((len(observations), self.K))
+			for t in range(len(observations)):
+				obs_matrix[t][observations[t]] = 1.0
+		ep = obs_matrix.dot(self.emission_probs.transpose())
+		ep = ep[1:, numpy.newaxis,:]
 
+		z = z[:-1, :, numpy.newaxis]
 		x = fp * tp * bp * ep * z
 		return x
 
@@ -75,8 +86,8 @@ class HiddenMarkovModel:
 	def expectation_step(self, observations):
 		forward_probs = self.forward(observations)
 		backward_probs = self.backward(observations)
-		g = self.gamma(forward_probs, backward_probs)
-		x = self.xi(forward_probs, backward_probs, observations)
+		g, z = self.gamma(forward_probs, backward_probs)
+		x = self.xi(forward_probs, backward_probs, z, observations)
 
 		expected_start_counts = g[0]
 		expected_state_counts = numpy.sum(g, axis=0)
