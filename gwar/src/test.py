@@ -1,6 +1,7 @@
 import sys
 import math
 import numpy
+import cProfile
 from hmm import HiddenMarkovModel
 
 if False:
@@ -41,24 +42,29 @@ elif False:
 	emission_probs = numpy.array([[1.0], [1.0]])
 else:
 	states = ('s', 't')
-	observations = ('A', 'B')
+	observations = ('A', 'B', 'C')
 	start_probs = numpy.array([0.85, 0.15])
 	transition_probs = numpy.array([[0.3, 0.7], [0.1, 0.9]])
-	emission_probs = numpy.array([[0.4, 0.6], [0.5, 0.5]])
+	emission_probs = numpy.array([[0.4, 0.6, 0.0], [0.5, 0.5, 0.0]])
 
-hmm = HiddenMarkovModel(len(states), len(observations), start_probs, transition_probs, emission_probs)
-data = [[0, 1, 1, 0] for i in range(10)] + [[1, 0, 1] for i in range(20)]
+def run():
+	global observations
+	hmm = HiddenMarkovModel(len(states), len(observations), start_probs, transition_probs, emission_probs)
+	data = [[0, 1, 1, 0] for i in range(10)] + [[1, 0, 1] for i in range(20)]
 
-for iteration in range(1000):
-	total_log_prob = 0.0
+	for iteration in range(100):
+		total_log_prob = 0.0
+		for observations in data:
+			obs_prob = hmm.expectation_step(observations)
+			total_log_prob += math.log(obs_prob)
+		hmm.maximization_step()
+		print total_log_prob
+
+	print hmm.start_probs
+	print hmm.transition_probs
+	print hmm.emission_probs
 	for observations in data:
-		obs_prob = hmm.expectation_step(observations)
-		total_log_prob += math.log(obs_prob)
-	hmm.maximization_step()
-	print total_log_prob
+		print hmm.viterbi(observations)
 
-print hmm.start_probs
-print hmm.transition_probs
-print hmm.emission_probs
-for observations in data:
-	print hmm.viterbi(observations)
+#cProfile.run('run()', sort=1)
+run()
