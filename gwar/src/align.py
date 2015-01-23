@@ -61,7 +61,7 @@ for line in sys.stdin:
 	target = [target_vocabulary.convert(word) for word in target.split()]
 	bitext.append((source, target))
 
-L = max([len(t) for (s, t) in bitext]) # max target sentence length
+L = max([len(s) for (s, t) in bitext]) # max source target length
 translation_table = generate_initial_translation_table(bitext, len(source_vocabulary), len(target_vocabulary))
 #print 'translation_table:'
 #print_ttable()
