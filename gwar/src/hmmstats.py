@@ -1,5 +1,6 @@
 import sys
 import numpy
+from sklearn.preprocessing import normalize
 
 class HmmStatistics:
 	def __init__(self, N, K):
@@ -24,6 +25,7 @@ class HmmStatistics:
 
 	def compute_transition_probs(self):
 		transition_probs = self.transition_counts / self.state_counts[:, numpy.newaxis]
+		#return normalize(transition_probs, axis=1, norm='l1')
 		sums = transition_probs.sum(axis=1)[:, numpy.newaxis]
 		#a = transition_probs / sums
 		b = numpy.where(sums > 0, transition_probs / sums, 0.0)
@@ -31,6 +33,7 @@ class HmmStatistics:
 
 	def compute_emission_probs(self):
 		emission_probs = self.emission_counts / self.state_counts[:, numpy.newaxis]
+		#return normalize(emission_probs, axis=1, norm='l1')
 		sums = emission_probs.sum(axis=1)[:, numpy.newaxis]
 		#a = emission_probs / sums
 		b = numpy.where(sums > 0, emission_probs / sums, 0.0)
