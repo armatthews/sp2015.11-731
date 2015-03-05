@@ -3,5 +3,5 @@ name:
    first: Austin
    last: Matthews
 email: austinma@cs.cmu.edu
-leaderboard: Austin
+leaderboard: wolet++
 languages: [eng,jpn]
